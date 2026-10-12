@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>質因數分解查詢器</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+    body {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 flex flex-col justify-between antialiased">
+  <header class="w-full bg-white border-b border-slate-200 py-4 shadow-sm">
+    <div class="max-w-4xl mx-auto px-4 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <span class="p-2 bg-indigo-600 text-white rounded-xl shadow-md">
+          <i class="fa-solid fa-calculator text-lg"></i>
+        </span>
+        <h1 class="text-xl font-bold text-slate-800">質因數分解查詢器</h1>
+      </div>
+      <span class="text-xs bg-indigo-50 text-indigo-700 font-medium px-3 py-1 rounded-full border border-indigo-200">
+        純前端工具 ‧ 免伺服器
+      </span>
+    </div>
+  </header>
+
+  <main class="flex-grow max-w-4xl w-full mx-auto px-4 py-8">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+      <div class="mb-6">
+        <label for="numInput" class="block text-sm md:text-base font-semibold text-slate-700 mb-2">
+          請輸入數字查詢因數
+        </label>
+        <div class="relative rounded-xl shadow-sm">
+          <input 
+            type="number" 
+            id="numInput" 
+            placeholder="請輸入大於 1 的正整數，例如：39" 
+            min="2"
+            max="9007199254740991"
+            class="block w-full px-4 py-3.5 pr-12 text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-base placeholder:text-slate-400"
+          >
+          <button 
+            id="clearBtn" 
+            title="清除輸入" 
+            class="hidden absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600"
+          >
+            <i class="fa-solid fa-circle-xmark"></i>
+          </button>
+        </div>
+        <p class="text-xs text-slate-500 mt-2 flex items-center gap-1.5">
+          <i class="fa-solid fa-circle-info text-slate-400"></i>
+          支援鍵盤 Enter 快捷鍵，試試看常見範例：
+          <button type="button" class="quick-sample text-indigo-600 hover:underline font-medium" data-val="39">39</button>、
+          <button type="button" class="quick-sample text-indigo-600 hover:underline font-medium" data-val="12">12</button>、
+          <button type="button" class="quick-sample text-indigo-600 hover:underline font-medium" data-val="360">360</button>、
+          <button type="button" class="quick-sample text-indigo-600 hover:underline font-medium" data-val="997">997</button>
+        </p>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-3">
+        <button 
+          id="calcBtn" 
+          class="w-full sm:w-auto px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-md shadow-indigo-100 transition-all duration-150 flex items-center justify-center gap-2 active:scale-95"
+        >
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <span>查詢</span>
+        </button>
+        <button 
+          id="resetBtn" 
+          class="w-full sm:w-auto px-5 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl transition-all duration-150 active:scale-95"
+        >
+          清空
+        </button>
+      </div>
+    </div>
+
+    <!-- 通知或錯誤訊息框 -->
+    <div id="alertBox" class="hidden mt-6 p-4 rounded-xl border flex items-center gap-3">
+      <i id="alertIcon" class="fa-solid text-lg"></i>
+      <div id="alertMsg" class="text-sm font-medium"></div>
+    </div>
+
+    <!-- 結果展示區塊 -->
+    <div id="resultCard" class="hidden mt-6 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="bg-slate-50/70 border-b border-slate-200 px-6 py-4 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-medium text-slate-500">查詢對象：</span>
+          <span id="targetNumber" class="text-xl font-bold text-indigo-600 font-mono">0</span>
+          <span id="primeBadge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full"></span>
+        </div>
+        <button 
+          id="copyBtn" 
+          class="text-xs bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-all"
+        >
+          <i class="fa-regular fa-copy"></i>
+          <span>複製分解式</span>
+        </button>
+      </div>
+
+      <div class="p-6 md:p-8 space-y-6">
+        <!-- 質因數分解表達式 -->
+        <div>
+          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <i class="fa-solid fa-bars-staggered text-indigo-500"></i> 質因數分解表達式
+          </h3>
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div id="exprMultiplication" class="text-lg md:text-xl font-mono font-bold text-slate-800"></div>
+            <div id="exprExponential" class="text-sm md:text-base font-mono text-slate-500 mt-1"></div>
+          </div>
+        </div>
+
+        <!-- 不重複質因數 -->
+        <div>
+          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <i class="fa-solid fa-asterisk text-indigo-500"></i> 所有質因數 (Prime Factors)
+          </h3>
+          <div id="primeFactorsList" class="flex flex-wrap gap-2"></div>
+        </div>
+
+        <!-- 所有因數清單 -->
+        <div>
+          <div class="flex justify-between items-center mb-2">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <i class="fa-solid fa-list-ol text-indigo-500"></i> 所有正因數 (共 <span id="factorCount" class="font-bold text-indigo-600">0</span> 個)
+            </h3>
+          </div>
+          <div id="allFactorsList" class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto p-1 bg-slate-50/50 rounded-xl border border-slate-100"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="w-full bg-white border-t border-slate-200 py-6 mt-8">
+    <div class="max-w-4xl mx-auto px-4 text-center text-xs text-slate-500 space-y-2">
+      <p>💡 提示：此工具為純靜態網頁（無需伺服器端後端邏輯），可直接放到 GitHub Pages、Vercel 或 Cloudflare 免費託管。</p>
+      <p class="text-slate-400">© 質因數分解查詢器 ‧ 支援大數運算與快速因數解析</p>
+    </div>
+  </footer>
+
+  <script>
+    // 取得 DOM 節點
+    const numInput = document.getElementById('numInput');
+    const calcBtn = document.getElementById('calcBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const alertBox = document.getElementById('alertBox');
+    const alertMsg = document.getElementById('alertMsg');
+    const alertIcon = document.getElementById('alertIcon');
+    const resultCard = document.getElementById('resultCard');
+    const targetNumber = document.getElementById('targetNumber');
+    const primeBadge = document.getElementById('primeBadge');
+    const exprMultiplication = document.getElementById('exprMultiplication');
+    const exprExponential = document.getElementById('exprExponential');
+    const primeFactorsList = document.getElementById('primeFactorsList');
+    const allFactorsList = document.getElementById('allFactorsList');
+    const factorCount = document.getElementById('factorCount');
+    const copyBtn = document.getElementById('copyBtn');
+
+    // 顯示提示訊息
+    function showAlert(message, type = 'error') {
+      alertBox.classList.remove('hidden', 'bg-red-50', 'border-red-200', 'text-red-700', 'bg-emerald-50', 'border-emerald-200', 'text-emerald-700');
+      alertIcon.classList.remove('fa-circle-exclamation', 'fa-circle-check');
+
+      if (type === 'error') {
+        alertBox.classList.add('bg-red-50', 'border-red-200', 'text-red-700');
+        alertIcon.classList.add('fa-solid', 'fa-circle-exclamation', 'text-red-500');
+      } else {
+        alertBox.classList.add('bg-emerald-50', 'border-emerald-200', 'text-emerald-700');
+        alertIcon.classList.add('fa-solid', 'fa-circle-check', 'text-emerald-500');
+      }
+
+      alertMsg.textContent = message;
+    }
+
+    function hideAlert() {
+      alertBox.classList.add('hidden');
+    }
+
+    // 計算質因數分解
+    function factorize(num) {
+      let n = BigInt(num);
+      const primeFactors = []; // 所有連乘的質數
+      const factorMap = new Map(); // 質數 -> 次方
+
+      let d = 2n;
+      while (d * d <= n) {
+        if (n % d === 0n) {
+          primeFactors.push(d);
+          factorMap.set(d, (factorMap.get(d) || 0) + 1);
+          n /= d;
+        } else {
+          d = (d === 2n) ? 3n : d + 2n;
+        }
+      }
+
+      if (n > 1n) {
+        primeFactors.push(n);
+        factorMap.set(n, (factorMap.get(n) || 0) + 1);
+      }
+
+      return { primeFactors, factorMap };
+    }
+
+    // 尋找所有因數（使用 BigInt，安全範圍內處理）
+    function getAllFactors(n) {
+      const num = BigInt(n);
+      const factors = [];
+      let i = 1n;
+      while (i * i <= num) {
+        if (num % i === 0n) {
+          factors.push(i);
+          if (i * i !== num) {
+            factors.push(num / i);
+          }
+        }
+        i++;
+      }
+      return factors.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    }
+
+    // 主查詢處理
+    function handleQuery() {
+      hideAlert();
+      const rawVal = numInput.value.trim();
+
+      if (!rawVal) {
+        showAlert('請輸入要查詢的數字！', 'error');
+        resultCard.classList.add('hidden');
+        return;
+      }
+
+      // 檢查是否為正整數
+      if (!/^\d+$/.test(rawVal)) {
+        showAlert('請輸入有效的正整數（僅限數字字符）！', 'error');
+        resultCard.classList.add('hidden');
+        return;
+      }
+
+      const val = BigInt(rawVal);
+      if (val < 2n) {
+        showAlert('請輸入大於 1 的正整數（質因數分解僅適用於 2 以上的整數）！', 'error');
+        resultCard.classList.add('hidden');
+        return;
+      }
+
+      // 安全防護：過大的數字
+      if (val > 1000000000000000n) {
+        showAlert('請輸入小於 1,000,000,000,000,000 的數字以保證即時計算流暢。', 'error');
+        return;
+      }
+
+      // 執行因數分解
+      const { primeFactors, factorMap } = factorize(val);
+      const isPrime = primeFactors.length === 1;
+
+      // 顯示基本數字與標籤
+      targetNumber.textContent = val.toString();
+      if (isPrime) {
+        primeBadge.textContent = '此數為質數 (Prime)';
+        primeBadge.className = 'text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700';
+      } else {
+        primeBadge.textContent = '合數 (Composite)';
+        primeBadge.className = 'text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700';
+      }
+
+      // 1. 質因數連乘形式 (例如 3 * 13 = 39)
+      const mulStr = primeFactors.map(p => p.toString()).join(' × ');
+      exprMultiplication.textContent = `${mulStr} = ${val}`;
+
+      // 2. 指數形式 (例如 2² × 3 = 12)
+      const expArr = [];
+      factorMap.forEach((count, prime) => {
+        if (count === 1) {
+          expArr.push(prime.toString());
+        } else {
+          expArr.push(`${prime}^${count}`);
+        }
+      });
+      const expStr = expArr.join(' × ');
+      exprExponential.textContent = `指數形式：${expStr} = ${val}`;
+
+      // 3. 獨立質因數列表 (如 3、13)
+      primeFactorsList.innerHTML = '';
+      const uniquePrimes = Array.from(factorMap.keys());
+      uniquePrimes.forEach(p => {
+        const span = document.createElement('span');
+        span.className = 'inline-flex items-center px-3 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg font-mono font-medium text-sm';
+        span.textContent = p.toString();
+        primeFactorsList.appendChild(span);
+      });
+
+      // 4. 所有正因數列表
+      const allFactors = getAllFactors(val);
+      factorCount.textContent = allFactors.length;
+      allFactorsList.innerHTML = '';
+      allFactors.forEach(f => {
+        const span = document.createElement('span');
+        const isSelfPrime = factorMap.has(f);
+        span.className = `px-2 py-0.5 text-xs font-mono rounded border ${
+          isSelfPrime 
+            ? 'bg-indigo-100 text-indigo-800 border-indigo-300 font-semibold' 
+            : 'bg-white text-slate-600 border-slate-200'
+        }`;
+        span.title = isSelfPrime ? `${f} 是質因數` : `${f} 是正因數`;
+        span.textContent = f.toString();
+        allFactorsList.appendChild(span);
+      });
+
+      // 顯示結果卡片
+      resultCard.classList.remove('hidden');
+    }
+
+    // 複製文字功能 (相容 iFrame 環境)
+    function copyResult() {
+      const text = exprMultiplication.textContent;
+      const tempInput = document.createElement('textarea');
+      tempInput.value = text;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      try {
+        document.execCommand('copy');
+        const originalText = copyBtn.innerHTML;
+        copyBtn.innerHTML = '<i class="fa-solid fa-check text-emerald-500"></i> 已複製！';
+        setTimeout(() => {
+          copyBtn.innerHTML = originalText;
+        }, 1500);
+      } catch (err) {
+        showAlert('複製失敗，請手動選取文字複製', 'error');
+      }
+      document.body.removeChild(tempInput);
+    }
+
+    // 清空重置
+    function handleReset() {
+      numInput.value = '';
+      hideAlert();
+      resultCard.classList.add('hidden');
+      clearBtn.classList.add('hidden');
+      numInput.focus();
+    }
+
+    // 事件監聽
+    calcBtn.addEventListener('click', handleQuery);
+    resetBtn.addEventListener('click', handleReset);
+    copyBtn.addEventListener('click', copyResult);
+
+    numInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        handleQuery();
+      }
+    });
+
+    numInput.addEventListener('input', () => {
+      if (numInput.value) {
+        clearBtn.classList.remove('hidden');
+      } else {
+        clearBtn.classList.add('hidden');
+      }
+    });
+
+    clearBtn.addEventListener('click', () => {
+      numInput.value = '';
+      clearBtn.classList.add('hidden');
+      numInput.focus();
+    });
+
+    // 範例按鈕點選即查
+    document.querySelectorAll('.quick-sample').forEach(btn => {
+      btn.addEventListener('click', () => {
+        numInput.value = btn.getAttribute('data-val');
+        clearBtn.classList.remove('hidden');
+        handleQuery();
+      });
+    });
+  </script>
+</body>
+</html>
